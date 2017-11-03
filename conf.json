@@ -1,5 +1,6 @@
 {
 	"UseJump": true,
+    "HostKeyCheck": false,
 	"Auth": "agent",
     "JumpUsername": "trevor",
     "JumpPassword": "",

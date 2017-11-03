@@ -8,6 +8,8 @@ import (
     "strings"
     "bytes"
     "runtime"
+    "bufio"
+    "path/filepath"
     "encoding/json"
     "golang.org/x/crypto/ssh"
     "golang.org/x/crypto/ssh/agent"
@@ -16,11 +18,13 @@ import (
 var saltCommand string
 var configuration = Configuration{}
 var bsshClientConnection *ssh.Client = nil
+var hostKeyCallBackConfig ssh.HostKeyCallback = nil
 var sshConfig *ssh.ClientConfig = nil
 
 type Configuration struct {
     Auth string
     UseJump bool
+    HostKeyCheck bool
     JumpUsername string
     JumpPassword string
     JumpPrivateKey string
@@ -36,6 +40,42 @@ func SSHAgent() ssh.AuthMethod {
         return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
     }
     return nil
+}
+
+func HostKeyCheck() (ssh.HostKeyCallback) {
+
+    host := "hostname"
+    file, err := os.Open(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
+    if err != nil {
+        log.Fatal(err)
+        os.Exit(1)
+    }
+    defer file.Close()
+
+    scanner := bufio.NewScanner(file)
+    var hostKey ssh.PublicKey
+    for scanner.Scan() {
+        fields := strings.Split(scanner.Text(), " ")
+        if len(fields) != 3 {
+            continue
+        }
+        if strings.Contains(fields[0], host) {
+            var err error
+            hostKey, _, _, _, err = ssh.ParseAuthorizedKey(scanner.Bytes())
+            if err != nil {
+                log.Fatalf("error parsing %q: %v", fields[2], err)
+            }
+            break
+        }
+    }
+
+    if hostKey == nil {
+        log.Fatalf("no hostkey for %s", host)
+        os.Exit(1)
+    }
+
+    return ssh.FixedHostKey(hostKey)
+
 }
 
 func setupJump() {
@@ -165,10 +205,16 @@ func main() {
         os.Exit(1)
     }
 
+    if configuration.HostKeyCheck {
+        hostKeyCallBackConfig = HostKeyCheck()
+    } else {
+        hostKeyCallBackConfig = ssh.InsecureIgnoreHostKey()
+    }
+
     sshConfig = &ssh.ClientConfig{
         User: configuration.RemoteUsername,
         Auth: sshAuthMethod,
-        HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+        HostKeyCallback: hostKeyCallBackConfig,
     }
 
     // Execute salt command
