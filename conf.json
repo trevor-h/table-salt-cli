@@ -1,0 +1,13 @@
+{
+	"UseJump": true,
+	"Auth": "agent",
+    "JumpUsername": "trevor",
+    "JumpPassword": "",
+    "JumpPrivateKey": "",
+    "JumpServer": "192.168.1.2:22",
+    "LocalEndpoint": "127.0.0.1:2222",
+    "RemoteEndpoint": "192.168.1.202:22",
+    "RemoteUsername": "trevor",
+    "RemotePassword": "",
+    "RemotePrivateKey": ""
+}
