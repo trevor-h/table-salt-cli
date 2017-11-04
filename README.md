@@ -49,7 +49,7 @@ If you are using a bastion host to connect to the salt-master you could run into
 
 # Installation
 
-You can clone/download this repo and build it yourself. Or if you prefer you can always find [binaries for Linux and Windows available here](https://github.com/trevor-h/table-salt-cli-bin). Setup is very simple. Place the executable anywhere you like (ideally somewhere in your system or user path).
+You can clone/download this repo and build it yourself. Or if you prefer you can always find [binaries for Linux and Windows available here](https://github.com/trevor-h/table-salt-cli-bin/releases). Setup is very simple. Place the executable anywhere you like (ideally somewhere in your system or user path).
 
 Use an example configuration from the 'configExamples' directory to get started.
 
