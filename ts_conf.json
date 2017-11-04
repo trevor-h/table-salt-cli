@@ -1,9 +1,9 @@
 {
-	"UseJump": true,
+    "UseJump": true,
     "UseSudo": true,
     "SudoType": "password",
     "HostKeyCheck": false,
-	"Auth": "agent",
+    "Auth": "agent",
     "JumpUsername": "trevor",
     "JumpPassword": "",
     "JumpPrivateKey": "",
