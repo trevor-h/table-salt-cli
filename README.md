@@ -45,10 +45,10 @@ In testing with the extra hop of a bastion hosts between the user workstation an
 # Specific Requirements
 
 The supported Salt-master setups include:
-  * Using eauth with either PAM or LDAP
-  * Using publisher ACL system
+  * [Using eauth with either PAM or LDAP](https://docs.saltstack.com/en/latest/topics/eauth/index.html)
+  * [Using publisher ACL system](https://docs.saltstack.com/en/latest/ref/publisheracl.html)
   * Sudo to root with no password
-  * Run salt as non-root user with approriate privileges for authorized users
+  * [Run salt as non-root user](https://docs.saltstack.com/en/latest/ref/configuration/nonroot.html) with approriate privileges for authorized users
 
 **If you need to sudo to root with a password in your environment then unfortunately this utility will not work for you currently.**
 
@@ -60,7 +60,27 @@ If you are using a bastion host to connect to the salt-master you could run into
 
 You can clone/download this repo and build it yourself. Or if you prefer you can always find [binaries for Linux and Windows available here](https://github.com/trevor-h/table-salt-cli-bin). Setup is very simple. Place the executable anywhere you like (ideally somewher in your system or user path).
 
-The configuration file must be located in the same directory as the command, or in the user's home directory as a hidden file (e.g. /home/jsmith/.table-salt-conf.json). If you have chosen the binary version there is nothing more to setup. **Just make sure to always have all configuration fields present, even if they are not applicable and/or are empty strings!**
+# Configuration
+
+The configuration file must be located in the same directory as the command, or in the user's home directory as a hidden file (e.g. /home/jsmith/.table-salt-conf.json). If you have chosen the binary version there is nothing more to setup. **Just make sure to always have all configuration fields present, even if they are not applicable and are are empty strings!**
+
+Below is a commented example configuration file:
+```sh
+{
+  "UseJump": false, // Use a bastion/jump host defined with Jump* below
+    "HostKeyCheck": false, // Do a host key check
+  "Auth": "agent", // Authentication type: agent, key, password
+    "JumpUsername": "", // Optional. Required if UseJump:true User to use on bastion/jump host
+    "JumpPassword": "", // Optional. Leave an empty field if doing 'agent' or 'key' auth
+    "JumpPrivateKey": "", // Optional. Leave an empty field if doing 'agent' or 'password' auth
+    "JumpServer": "", // Optional. Leave en ampty field if not using bastion/jump host. Specified as <host>:<port>
+    "RemoteEndpoint": "192.168.1.202:22", // Required. This is the host/ip of the salt-master. Specified as <host>:<port>
+    "RemoteUsername": "trevor", // Required. This is the user to login to salt-master with
+    "RemotePassword": "", // Optional. Leave an empty field if doing 'agent' or 'key' auth
+    "RemotePrivateKey": "" // Optional. Leave an empty field if doing 'agent' or 'password' auth
+}
+```
+
 
 # Other Plans
 
