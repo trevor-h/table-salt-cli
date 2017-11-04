@@ -44,30 +44,24 @@ In testing with the extra hop of a bastion hosts between the user workstation an
 
 # Specific Requirements
 
-The supported Salt-master setups include:
-  * [Using eauth with either PAM or LDAP](https://docs.saltstack.com/en/latest/topics/eauth/index.html)
-  * [Using publisher ACL system](https://docs.saltstack.com/en/latest/ref/publisheracl.html)
-  * Sudo to root with no password
-  * [Run salt as non-root user](https://docs.saltstack.com/en/latest/ref/configuration/nonroot.html) with approriate privileges for authorized users
-
-**If you need to sudo to root with a password in your environment then unfortunately this utility will not work for you currently.**
-
-The reason for this 'limitation' is currently the utility has no ability to do interactive sudo. Due to the undesirable behavior of all executions being done by the root (or custom salt user) there is no current plan to support this type of account sharing environment setup. If someone submits a pull request to add this it will be accepted with pleasure, it's just not a priority.
-
 If you are using a bastion host to connect to the salt-master you could run into issues with a restritive SSH configuration preventing you from reaching the salt-master. If you've used SSH port forwarding before then you should not have a problem as this utility uses the same principle.
 
 # Installation
 
-You can clone/download this repo and build it yourself. Or if you prefer you can always find [binaries for Linux and Windows available here](https://github.com/trevor-h/table-salt-cli-bin). Setup is very simple. Place the executable anywhere you like (ideally somewher in your system or user path).
+You can clone/download this repo and build it yourself. Or if you prefer you can always find [binaries for Linux and Windows available here](https://github.com/trevor-h/table-salt-cli-bin). Setup is very simple. Place the executable anywhere you like (ideally somewhere in your system or user path).
+
+Use an example configuration from the 'configExamples' directory to get started.
 
 # Configuration
 
-The configuration file must be located in the same directory as the command, or in the user's home directory as a hidden file (e.g. /home/jsmith/.table-salt-conf.json). If you have chosen the binary version there is nothing more to setup. **Just make sure to always have all configuration fields present, even if they are not applicable and are are empty strings!**
+The configuration file must be located in the same directory as the command or specified via an environment variable TABLESALTCONF. If you have chosen the binary version there is nothing more to setup. **Just make sure to always have all configuration fields present, even if they are not applicable and are are empty strings!**
 
 Below is a commented example configuration file:
 ```sh
 {
   "UseJump": false, // Use a bastion/jump host defined with Jump* below
+  "UseSudo": false, // Use sudo when executing salt on RemoteEndpoint
+  "SudoType": "password", // SudoType: password, nopassword. Used with UseSudo. Password for sudo taken from RemotePassword entry
   "HostKeyCheck": false, // Do a host key check
   "Auth": "agent", // Authentication type: agent, key, password
   "JumpUsername": "", // Optional. Required if UseJump:true User to use on bastion/jump host
@@ -88,7 +82,6 @@ A few more features are planned currently including:
 
   * Support for Windows SSH agent (Pageant)
   * Support for decrypting private keys at execution via configuration or keyboard-interative
-  * Environment variable support for configuration path to allow both custom config locations as well as the ability to quickly and easily work on different salt-masters
   * Support for other Saltstack commands like salt-run, salt-key
 
 # Known Issues
