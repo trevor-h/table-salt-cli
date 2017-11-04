@@ -9,6 +9,7 @@ import (
     "bytes"
     "runtime"
     "bufio"
+    "regexp"
     "path/filepath"
     "encoding/json"
     "golang.org/x/crypto/ssh"
@@ -24,6 +25,8 @@ var sshConfig *ssh.ClientConfig = nil
 type Configuration struct {
     Auth string
     UseJump bool
+    UseSudo bool
+    SudoType string
     HostKeyCheck bool
     JumpUsername string
     JumpPassword string
@@ -120,7 +123,35 @@ func setupJump() {
 
 }
 
+func generateSaltCommand() (string) {
+
+    args := os.Args[1:]
+
+    for i := 0; i < len(args); i++ {
+        args[i] = "\""+args[i]+"\""
+    }
+
+    saltCommand := "salt " + strings.Join(args, " ")
+
+    // Handle sudo if necessary
+    if configuration.UseSudo {
+        if configuration.SudoType == "nopassword" {
+            saltCommand = "sudo " + saltCommand
+        } else {
+            if len(configuration.RemotePassword) > 0 {
+                saltCommand = "echo \"" + configuration.RemotePassword + "\" | sudo -kS " + saltCommand
+            }
+        }
+
+    }
+
+    return saltCommand
+
+}
+
 func useJump() (string) {
+
+    var commandResult string
 
     jumpConnection, err := bsshClientConnection.Dial("tcp", configuration.RemoteEndpoint)
     if err != nil {
@@ -141,14 +172,20 @@ func useJump() (string) {
         fmt.Println(err.Error())
     }
     defer session.Close()
-    var b bytes.Buffer
-    session.Stdout = &b
-    err = session.Run(saltCommand)
-    return b.String()
+
+    if ! configuration.UseSudo {
+        commandResult = executePtySession(session)
+    } else {
+        commandResult = executePtySession(session)
+    }
+
+    return commandResult
 
 }
 
 func goDirect() (string) {
+
+    var commandResult string
 
     sshClientConnection, err := ssh.Dial("tcp", configuration.RemoteEndpoint, sshConfig)
     if err != nil {
@@ -161,32 +198,65 @@ func goDirect() (string) {
         fmt.Println(err.Error())
     }
     defer session.Close()
+
+    if ! configuration.UseSudo {
+        commandResult = executePtySession(session)
+    } else {
+        commandResult = executePtySession(session)
+    }
+
+    return commandResult
+
+}
+
+func executeNonPtySession(sshSession *ssh.Session) (string) {
+        var b bytes.Buffer
+        sshSession.Stdout = &b
+        sshSession.Run(saltCommand)
+        commandResult := b.String()
+        return commandResult
+}
+
+func executePtySession(sshSession *ssh.Session) (string) {
+
+    modes := ssh.TerminalModes{
+        ssh.ECHO:  0,
+        ssh.TTY_OP_ISPEED: 14400,
+        ssh.TTY_OP_OSPEED: 14400,
+        ssh.IGNCR: 1,
+    }
+
+    if err := sshSession.RequestPty("vt100", 80, 40, modes); err != nil {
+        log.Fatalf("request for pseudo terminal failed: %s", err)
+    }
+
     var b bytes.Buffer
-    session.Stdout = &b
-    err = session.Run(saltCommand)
-    return b.String()
+    sshSession.Stdout = &b
+    sshSession.Run(saltCommand)
+    reg := regexp.MustCompile(`^.*: (.*)`)
+    commandResult := reg.ReplaceAllString(b.String(), "${1}")
+
+    return commandResult
 
 }
 
 func main() {
 
     // Open configuration JSON
-    file, _ := os.Open("conf.json")
+    configPath := "ts_conf.json"
+    if len(os.Getenv("TABLESALTCONF")) > 0 {
+        configPath = os.Getenv("TABLESALTCONF")
+    }
+    file, _ := os.Open(configPath)
     decoder := json.NewDecoder(file)
     configuration = Configuration{}
     err := decoder.Decode(&configuration)
     if err != nil {
-      fmt.Println("error:", err)
+      fmt.Println("Error: Invalid or missing configuration. ", err)
     }
 
     // Parse salt command args
-    args := os.Args[1:]
-
-    for i := 0; i < len(args); i++ {
-        args[i] = "\""+args[i]+"\""
-    }
-
-    saltCommand = "salt " + strings.Join(args, " ")
+    saltCommand = generateSaltCommand()
 
     // Connect to bastion/jump server if necessary
     if configuration.UseJump {
@@ -229,7 +299,6 @@ func main() {
     var saltOutput string
     if configuration.UseJump {
         saltOutput = useJump()
-    // Go directly to salt-master
     } else {
         saltOutput = goDirect()
     }

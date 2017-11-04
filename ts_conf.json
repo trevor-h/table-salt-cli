@@ -1,6 +1,8 @@
 {
 	"UseJump": true,
-    "HostKeyCheck": true,
+    "UseSudo": true,
+    "SudoType": "password",
+    "HostKeyCheck": false,
 	"Auth": "password",
     "JumpUsername": "trevor",
     "JumpPassword": "$!@^TU><236",
