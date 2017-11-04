@@ -3,13 +3,13 @@
     "UseSudo": true,
     "SudoType": "password",
     "HostKeyCheck": false,
-	"Auth": "password",
+	"Auth": "agent",
     "JumpUsername": "trevor",
-    "JumpPassword": "$!@^TU><236",
+    "JumpPassword": "",
     "JumpPrivateKey": "",
     "JumpServer": "192.168.1.2:22",
     "RemoteEndpoint": "192.168.1.202:22",
     "RemoteUsername": "trevor",
-    "RemotePassword": "123123",
+    "RemotePassword": "",
     "RemotePrivateKey": ""
 }
