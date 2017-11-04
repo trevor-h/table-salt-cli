@@ -42,9 +42,9 @@ func SSHAgent() ssh.AuthMethod {
     return nil
 }
 
-func HostKeyCheck() (ssh.HostKeyCallback) {
+func HostKeyCheck(remoteHost string) (ssh.HostKeyCallback) {
 
-    host := "hostname"
+    host := remoteHost
     file, err := os.Open(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
     if err != nil {
         log.Fatal(err)
@@ -63,14 +63,14 @@ func HostKeyCheck() (ssh.HostKeyCallback) {
             var err error
             hostKey, _, _, _, err = ssh.ParseAuthorizedKey(scanner.Bytes())
             if err != nil {
-                log.Fatalf("error parsing %q: %v", fields[2], err)
+                log.Fatalf("Error parsing %q: %v", fields[2], err)
             }
             break
         }
     }
 
     if hostKey == nil {
-        log.Fatalf("no hostkey for %s", host)
+        log.Fatalf("No hostkey for %s. You can disable checks in the config by setting HostKeyCheck to false.", host)
         os.Exit(1)
     }
 
@@ -99,10 +99,17 @@ func setupJump() {
         os.Exit(1)
     }
 
+    if configuration.HostKeyCheck {
+        hostSplit := strings.Split(configuration.JumpServer, ":")
+        hostKeyCallBackConfig = HostKeyCheck(hostSplit[0])
+    } else {
+        hostKeyCallBackConfig = ssh.InsecureIgnoreHostKey()
+    }
+
     bsshConfig := &ssh.ClientConfig{
         User: configuration.JumpUsername,
         Auth: bsshAuthMethod,
-        HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+        HostKeyCallback: hostKeyCallBackConfig,
     }
 
     bsshClientConnection, err = ssh.Dial("tcp", configuration.JumpServer, bsshConfig)
@@ -179,7 +186,6 @@ func main() {
         args[i] = "\""+args[i]+"\""
     }
 
-    // Format salt command
     saltCommand = "salt " + strings.Join(args, " ")
 
     // Connect to bastion/jump server if necessary
@@ -187,6 +193,7 @@ func main() {
         setupJump()
     }
 
+    // Connect to salt-master directly or through jump server
     sshAuthMethod := []ssh.AuthMethod{SSHAgent()}
 
     if configuration.Auth == "key" && len(configuration.RemotePrivateKey) > 0 {
@@ -206,7 +213,8 @@ func main() {
     }
 
     if configuration.HostKeyCheck {
-        hostKeyCallBackConfig = HostKeyCheck()
+        hostSplit := strings.Split(configuration.RemoteEndpoint, ":")
+        hostKeyCallBackConfig = HostKeyCheck(hostSplit[0])
     } else {
         hostKeyCallBackConfig = ssh.InsecureIgnoreHostKey()
     }

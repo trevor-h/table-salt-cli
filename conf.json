@@ -1,13 +1,13 @@
 {
 	"UseJump": true,
-    "HostKeyCheck": false,
-	"Auth": "agent",
+    "HostKeyCheck": true,
+	"Auth": "password",
     "JumpUsername": "trevor",
-    "JumpPassword": "",
+    "JumpPassword": "$!@^TU><236",
     "JumpPrivateKey": "",
     "JumpServer": "192.168.1.2:22",
     "RemoteEndpoint": "192.168.1.202:22",
     "RemoteUsername": "trevor",
-    "RemotePassword": "",
+    "RemotePassword": "123123",
     "RemotePrivateKey": ""
 }
