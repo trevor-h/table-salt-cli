@@ -68,16 +68,16 @@ Below is a commented example configuration file:
 ```sh
 {
   "UseJump": false, // Use a bastion/jump host defined with Jump* below
-    "HostKeyCheck": false, // Do a host key check
+  "HostKeyCheck": false, // Do a host key check
   "Auth": "agent", // Authentication type: agent, key, password
-    "JumpUsername": "", // Optional. Required if UseJump:true User to use on bastion/jump host
-    "JumpPassword": "", // Optional. Leave an empty field if doing 'agent' or 'key' auth
-    "JumpPrivateKey": "", // Optional. Leave an empty field if doing 'agent' or 'password' auth
-    "JumpServer": "", // Optional. Leave en ampty field if not using bastion/jump host. Specified as <host>:<port>
-    "RemoteEndpoint": "192.168.1.202:22", // Required. This is the host/ip of the salt-master. Specified as <host>:<port>
-    "RemoteUsername": "trevor", // Required. This is the user to login to salt-master with
-    "RemotePassword": "", // Optional. Leave an empty field if doing 'agent' or 'key' auth
-    "RemotePrivateKey": "" // Optional. Leave an empty field if doing 'agent' or 'password' auth
+  "JumpUsername": "", // Optional. Required if UseJump:true User to use on bastion/jump host
+  "JumpPassword": "", // Optional. Leave an empty field if doing 'agent' or 'key' auth
+  "JumpPrivateKey": "", // Optional. Leave an empty field if doing 'agent' or 'password' auth
+  "JumpServer": "", // Optional. Leave en ampty field if not using bastion/jump host. Specified as <host>:<port>
+  "RemoteEndpoint": "192.168.1.202:22", // Required. This is the host/ip of the salt-master. Specified as <host>:<port>
+  "RemoteUsername": "trevor", // Required. This is the user to login to salt-master with
+  "RemotePassword": "", // Optional. Leave an empty field if doing 'agent' or 'key' auth
+  "RemotePrivateKey": "" // Optional. Leave an empty field if doing 'agent' or 'password' auth
 }
 ```
 
