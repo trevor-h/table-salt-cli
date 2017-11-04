@@ -1,14 +1,15 @@
 # tableSALT CLI
 
-A ready to serve GO based remote client for Saltstack using SSH with support for bastion/jump hosts. Run the 'salt' command like on the salt-master from your workstation.
+A ready to serve GO based remote client for Saltstack using SSH. Run the 'salt' command like on the salt-master from your workstation.
 
 # Features
   - Support Linux and Windows
   - Multiple authentication support: agent (Linux only), private key and password
+  - Support for sudo (password or passwordless)
   - Built-in support to punch through bastion/jump servers automatically
-  - 100% native salt command. All arguments passed directly to the salt command on the salt-master
+  - 100% native salt command compatible. All arguments passed directly to the salt command on the salt-master
   - No client side dependencies or setup. A single binary executable contains all that's needed
-  - Supports any version of Saltstack without patching or other complex changes. Absolutely nothing to install on salt-master
+  - Supports any version of Saltstack without patching or configuration changes. Absolutely nothing to install on salt-master
 
 # Who's This For?
 Saltstack ships with external authentication support as well as a REST API via netapi so you might be wondering the use case. While supported many organizations are hesitant (and rightly so) to open their salt-master(s) to traditionally less secure protocols (SSH vs HTTP).
@@ -19,7 +20,7 @@ This tool is for anyone who:
   - Isn't particular comfortable with, or not allowed due to policy to enable HTTP in Saltstack
   - Already has a cobbled together solution with separate tunnels, etc to "get to the salt-master"
   - Is a Windows administrator wanting to work in a familiar environment, or a Linux administrator more comfortable with personal workstation setup/preferences than often generic profiles found on bastion and service hosts.
-  - You want the benefits of Saltstack with similar operation to tools like Ansible
+  - You want the benefits of Saltstack with similar operation to tools like Ansible, Fabric or plain old SSH remote executions
 
 # How Does It Work?
 
@@ -74,7 +75,7 @@ Below is a commented example configuration file:
   "RemotePrivateKey": "" // Optional. Leave an empty field if doing 'agent' or 'password' auth
 }
 ```
-
+Use one of the example configurations found in 'configuration_examples' directory to help illustrate the configuration better.
 
 # Other Plans
 
