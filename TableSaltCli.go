@@ -262,12 +262,15 @@ func executePtySession(sshSession *ssh.Session) (string) {
         rawCommandResult := readBuffForString(sshOut, true)
         outRegex := regexp.MustCompile(`(.*)\n.*` + configuration.RemoteUsername + `.*\$`)
         commandResult = outRegex.ReplaceAllString(rawCommandResult, "${1}")
+
     } else {
+
         var b bytes.Buffer
         sshSession.Stdout = &b
         sshSession.Run(saltCommand)
         outRegex := regexp.MustCompile(`^.*: (.*)`)
         commandResult = outRegex.ReplaceAllString(b.String(), "${1}")
+
     }
 
     return commandResult
