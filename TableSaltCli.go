@@ -85,42 +85,69 @@ func HostKeyCheck(remoteHost string) (ssh.HostKeyCallback) {
 func setupJump() {
 
     err := error(nil)
-    bsshAuthMethod := []ssh.AuthMethod{SSHAgent()}
 
-    if configuration.Auth == "key" && len(configuration.JumpPrivateKey) > 0 {
-        jumpKey, err := ssh.ParsePrivateKey([]byte(configuration.JumpPrivateKey))
-        if err != nil {
-            fmt.Println("Could not parse private key file. Check the path and ensure it is not encrypted.")
-            os.Exit(1)
-        }
-        bsshAuthMethod[0] = ssh.PublicKeys(jumpKey)
-    } else if configuration.Auth == "agent" && runtime.GOOS != "windows" {
-        bsshAuthMethod[0] = SSHAgent()
-    } else if configuration.Auth == "password" && len(configuration.JumpPassword) > 0 {
-        bsshAuthMethod[0] = ssh.Password(configuration.JumpPassword)
-    } else {
-        fmt.Println("No supported authentication modes available/supported. Double check your configuration.")
-        os.Exit(1)
-    }
-
-    if configuration.HostKeyCheck {
-        hostSplit := strings.Split(configuration.JumpServer, ":")
-        hostKeyCallBackConfig = HostKeyCheck(hostSplit[0])
-    } else {
-        hostKeyCallBackConfig = ssh.InsecureIgnoreHostKey()
-    }
-
-    bsshConfig := &ssh.ClientConfig{
-        User: configuration.JumpUsername,
-        Auth: bsshAuthMethod,
-        HostKeyCallback: hostKeyCallBackConfig,
-    }
+    // Set SSH configuration
+    bsshConfig := generateSshConfig("bastion")
 
     bsshClientConnection, err = ssh.Dial("tcp", configuration.JumpServer, bsshConfig)
     if err != nil {
         log.Fatal(err)
         os.Exit(1)
     }
+
+}
+
+func generateSshConfig(configType string) (*ssh.ClientConfig) {
+
+    var sshConfigUsername string
+    var sshConfigPassword string
+    var sshConfigPrivateKey string
+    var sshConfigEndpoint string
+
+    sshAuthMethod := []ssh.AuthMethod{SSHAgent()}
+
+    if configType == "bastion" {
+        sshConfigUsername = configuration.JumpUsername
+        sshConfigPassword = configuration.JumpPassword
+        sshConfigPrivateKey = configuration.JumpPrivateKey
+        sshConfigEndpoint = configuration.JumpServer
+    } else {
+        sshConfigUsername = configuration.RemoteUsername
+        sshConfigPassword = configuration.RemotePassword
+        sshConfigPrivateKey = configuration.RemotePrivateKey
+        sshConfigEndpoint = configuration.RemoteEndpoint
+    }
+
+    if configuration.Auth == "key" && len(sshConfigPrivateKey) > 0 {
+        remoteKey, err := ssh.ParsePrivateKey([]byte(sshConfigPrivateKey))
+        if err != nil {
+            fmt.Println("Could not parse private key file. Check the path and ensure it is not encrypted.")
+            os.Exit(1)
+        }
+        sshAuthMethod[0] = ssh.PublicKeys(remoteKey)
+    } else if configuration.Auth == "agent" && runtime.GOOS != "windows" {
+        sshAuthMethod[0] = SSHAgent()
+    } else if configuration.Auth == "password" && len(sshConfigPassword) > 0 {
+        sshAuthMethod[0] = ssh.Password(sshConfigPassword)
+    } else {
+        fmt.Println("No supported authentication modes available/supported. Double check your configuration.")
+        os.Exit(1)
+    }
+
+    if configuration.HostKeyCheck {
+        hostSplit := strings.Split(sshConfigEndpoint, ":")
+        hostKeyCallBackConfig = HostKeyCheck(hostSplit[0])
+    } else {
+        hostKeyCallBackConfig = ssh.InsecureIgnoreHostKey()
+    }
+
+    sshConfig := &ssh.ClientConfig{
+        User: sshConfigUsername,
+        Auth: sshAuthMethod,
+        HostKeyCallback: hostKeyCallBackConfig,
+    }
+
+    return sshConfig
 
 }
 
@@ -285,6 +312,11 @@ func writeSession(cmd string, sshIn io.WriteCloser) {
     handleError(err)
 }
 
+func stripEmptyLines(inString string) (string) {
+        StripRegex := regexp.MustCompile(`\n\n`)
+        return StripRegex.ReplaceAllString(inString, "\n")
+}
+
 func handleError(err error) {
     if err != nil {
         panic(err)
@@ -314,37 +346,8 @@ func main() {
         setupJump()
     }
 
-    // Connect to salt-master directly or through jump server
-    sshAuthMethod := []ssh.AuthMethod{SSHAgent()}
-
-    if configuration.Auth == "key" && len(configuration.RemotePrivateKey) > 0 {
-        remoteKey, err := ssh.ParsePrivateKey([]byte(configuration.RemotePrivateKey))
-        if err != nil {
-            fmt.Println("Could not parse private key file. Check the path and ensure it is not encrypted.")
-            os.Exit(1)
-        }
-        sshAuthMethod[0] = ssh.PublicKeys(remoteKey)
-    } else if configuration.Auth == "agent" && runtime.GOOS != "windows" {
-        sshAuthMethod[0] = SSHAgent()
-    } else if configuration.Auth == "password" && len(configuration.RemotePassword) > 0 {
-        sshAuthMethod[0] = ssh.Password(configuration.RemotePassword)
-    } else {
-        fmt.Println("No supported authentication modes available/supported. Double check your configuration.")
-        os.Exit(1)
-    }
-
-    if configuration.HostKeyCheck {
-        hostSplit := strings.Split(configuration.RemoteEndpoint, ":")
-        hostKeyCallBackConfig = HostKeyCheck(hostSplit[0])
-    } else {
-        hostKeyCallBackConfig = ssh.InsecureIgnoreHostKey()
-    }
-
-    sshConfig = &ssh.ClientConfig{
-        User: configuration.RemoteUsername,
-        Auth: sshAuthMethod,
-        HostKeyCallback: hostKeyCallBackConfig,
-    }
+    // Set SSH configuration
+    sshConfig = generateSshConfig("remote")
 
     // Execute salt command
     var saltOutput string
