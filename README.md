@@ -3,13 +3,15 @@
 A ready to serve GO based remote client for Saltstack using SSH. Run the 'salt' command like on the salt-master from your workstation.
 
 # Features
-  - Support Linux and Windows
+  - Supports Linux and Windows with both source and binary releases. Make Saltstack accessible for everyone
   - Multiple authentication support: agent (Linux only), private key and password
   - Support for sudo (password or passwordless)
   - Built-in support to punch through bastion/jump servers automatically
   - 100% native salt command compatible. All arguments passed directly to the salt command on the salt-master
   - No client side dependencies or setup. A single binary executable contains all that's needed
-  - Supports any version of Saltstack without patching or configuration changes. Absolutely nothing to install on salt-master
+  - Works with any version of Saltstack without patching or configuration changes. Absolutely nothing to install on salt-master
+  - Support for salt-key, salt-run and also any arbitrary command execution on salt-master
+  - Virtual wrapper execution modules provide enhanced functionality like copy a local file directly to multiple minion targets in one step
 
 # Who's This For?
 Saltstack ships with external authentication support as well as a REST API via netapi so you might be wondering the use case. While supported many organizations are hesitant (and rightly so) to open their salt-master(s) to traditionally less secure protocols (SSH vs HTTP).
@@ -36,12 +38,48 @@ On your workstation with table-salt this would be:
 ```sh
 $ table-salt '*' cmd.run 'some command' --output=json --async
 ```
+Want to run salt-key:
+```sh
+$ table-salt --tsk --list-all
+```
+The **--tsk** positional argument informs table-salt to use salt-key instead of salt. After the parameter include any normal salt-key execution parameters.
 
-Support for any and all arguments and parameters of the salt command now and in the future is automatic. Everything is done over SSH using the same connection methods and credentials you are likely using already.
+Want to run salt-run:
+```sh
+$ table-salt --tsr jobs.print_job 20171105114119937597
+```
+The **--tsr** positional argument informs table-salt to use salt-run instead of salt. After the parameter include any normal salt-run execution parameters.
+
+Want to run <ANYTHING> on salt-master:
+```sh
+$ table-salt --tse echo 'this is running on salt-master'
+```
+The **--tse** positional argument informs table-salt to pass all proceeding arguments directly as execution. Baically this is just remote execution over SSH on the salt-master.
+
+Support for any and all arguments and parameters of the salt (and other) command(s) now and in the future is automatic. Everything is done over SSH using the same connection methods and credentials you are likely using already.
 
 For authentication SSH agents (Linux only currently), unencrypted private keys and passwords are supported. There is also automatic support to traverse through a jump/bastion host to reach the salt-master. Just enable the option in the configuration file. Different users and/or credentials can be used between bastion hosts and salt-masters if your situation requires it.
 
 In testing with the extra hop of a bastion hosts between the user workstation and salt-master there is about 180-240ms overhead vs running locally on the salt-master. This generally makes it acceptable to use even for quick executions. All the overhead is SSH and is comparable roughly to execution RTT with Ansible.
+
+#### Special 'Virtual Module Wrappers'
+
+Ever had a text file sitting locally on your workstation you wanted to move to one or more remote hosts?  More than one file to more than one host gets ugly pretty quickly!
+
+Enter "virtual module wrappers". This is just a fancy way of taking locally sourced things (like files) and "doing stuff" with them through existing Saltstack execution modules.
+
+**tablesalt.cp Virutal Module**
+This virtual module is simply a wrapper for hashutil.base64_decodefile. When executed against a target before running the salt command the source file is base64 encoded and becomes input for the real Saltstack execution module.
+
+For example:
+```sh
+$ table-salt '*' tablesalt.cp /some/local/filename /destination/path/filename
+```
+This will take the local file (if it exists) and encode it's contents and the actual execution on the salt-master will be:
+```sh
+$ salt '*' hashutil.base64_decodefile instr="<base64 encoded string of /some/local/filename>"  outfile="/destination/path/filename"
+```
+This module is still in a preview state and may have some issues with larger binary files. Use should be restricted to small text files, configs and other headaches to distribute as a one-off.
 
 # Specific Requirements
 
@@ -83,9 +121,7 @@ A few more features are planned currently including:
 
   * Support for Windows SSH agent (Pageant)
   * Support for decrypting private keys at execution via configuration or keyboard-interative
-  * Support for other Saltstack commands like salt-run, salt-key
 
 # Known Issues
 
-  - On this initial release error handling is just functional, and needs improvement
   - SSH host key checks were quickly thrown in and not fully tested
