@@ -158,7 +158,10 @@ func generateSaltCommand() (string) {
 
     args := os.Args[1:]
 
+    // Advanced feature handling
     for i := 0; i < len(args); i++ {
+
+        // Check if alt exec + build command
         if args[i] == "--tsr" {
             execCommand = "salt-run"
         } else if args[i] == "--tsk" {
@@ -169,23 +172,24 @@ func generateSaltCommand() (string) {
             args[i] = "\""+args[i]+"\""
             passedArgs = passedArgs + " " + args[i]
         }
+
     }
 
-    saltCommand := execCommand + " " + passedArgs
+    runCommand := execCommand + " " + passedArgs
 
     // Handle sudo if necessary
     if configuration.UseSudo {
         if configuration.SudoType == "nopassword" {
-            saltCommand = "sudo " + saltCommand
+            runCommand = "sudo " + runCommand
         } else {
             if len(configuration.RemotePassword) > 0 {
-                saltCommand = "sudo " + saltCommand + "\n"
+                runCommand = "sudo " + runCommand + "\n"
             }
         }
 
     }
 
-    return saltCommand
+    return runCommand
 
 }
 
@@ -273,8 +277,8 @@ func executePtySession(sshSession *ssh.Session) (string) {
         // send password when prompted. will break loop on command prompt
         writeSession(configuration.RemotePassword + "\n", sshIn)
         rawCommandResult := readBuffForString(sshOut, true)
-        outRegex := regexp.MustCompile(`(.*)\n.*` + configuration.RemoteUsername + `.*\$`)
-        commandResult = outRegex.ReplaceAllString(rawCommandResult, "${1}")
+        outRegex := regexp.MustCompile(`(.*)\n.*` + configuration.RemoteUsername + `.*(\$|#|>)`)
+        commandResult = outRegex.ReplaceAllString(rawCommandResult, " ${1}")
 
     } else {
 
@@ -286,7 +290,7 @@ func executePtySession(sshSession *ssh.Session) (string) {
 
     }
 
-    return commandResult
+    return strings.TrimSpace(commandResult)
 
 }
 
