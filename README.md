@@ -77,8 +77,6 @@ Below is a commented example configuration file:
 ```
 Use one of the example configurations found in 'configuration_examples' directory to help illustrate the configuration better.
 
-**Security Note: The current sudo implementation is for testing ptys directly piping the password into sudo. This would show your user password in the running command for its duration. An update will be posted in the next revision that simulates a keyboard interactive sudo authentication alleviating any security concern.**
-
 # Other Plans
 
 A few more features are planned currently including:

@@ -9,6 +9,7 @@ import (
     "bytes"
     "runtime"
     "bufio"
+    "io"
     "regexp"
     "path/filepath"
     "encoding/json"
@@ -139,7 +140,7 @@ func generateSaltCommand() (string) {
             saltCommand = "sudo " + saltCommand
         } else {
             if len(configuration.RemotePassword) > 0 {
-                saltCommand = "echo \"" + configuration.RemotePassword + "\" | sudo -kS " + saltCommand
+                saltCommand = "sudo " + saltCommand + "\n"
             }
         }
 
@@ -172,12 +173,7 @@ func useJump() (string) {
         fmt.Println(err.Error())
     }
     defer session.Close()
-
-    if ! configuration.UseSudo {
-        commandResult = executePtySession(session)
-    } else {
-        commandResult = executePtySession(session)
-    }
+    commandResult = executePtySession(session)
 
     return commandResult
 
@@ -198,26 +194,15 @@ func goDirect() (string) {
         fmt.Println(err.Error())
     }
     defer session.Close()
-
-    if ! configuration.UseSudo {
-        commandResult = executePtySession(session)
-    } else {
-        commandResult = executePtySession(session)
-    }
+    commandResult = executePtySession(session)
 
     return commandResult
 
 }
 
-func executeNonPtySession(sshSession *ssh.Session) (string) {
-        var b bytes.Buffer
-        sshSession.Stdout = &b
-        sshSession.Run(saltCommand)
-        commandResult := b.String()
-        return commandResult
-}
-
 func executePtySession(sshSession *ssh.Session) (string) {
+
+    var commandResult string
 
     modes := ssh.TerminalModes{
         ssh.ECHO:  0,
@@ -230,14 +215,80 @@ func executePtySession(sshSession *ssh.Session) (string) {
         log.Fatalf("request for pseudo terminal failed: %s", err)
     }
 
-    var b bytes.Buffer
-    sshSession.Stdout = &b
-    sshSession.Run(saltCommand)
-    reg := regexp.MustCompile(`^.*: (.*)`)
-    commandResult := reg.ReplaceAllString(b.String(), "${1}")
+    if configuration.UseSudo && configuration.SudoType == "password" {
+
+        sshOut, err := sshSession.StdoutPipe()
+        handleError(err)
+        sshIn, err := sshSession.StdinPipe()
+        handleError(err)
+
+        if err := sshSession.Shell(); err != nil {
+            log.Fatalf("failed to start shell: %s", err)
+        }
+
+        // send sudo salt command
+        writeSession(saltCommand, sshIn)
+        // wait for password prompt. will break loop to return
+        readBuffForString(sshOut, false)
+        // send password when prompted. will break loop on command prompt
+        writeSession(configuration.RemotePassword + "\n", sshIn)
+        rawCommandResult := readBuffForString(sshOut, true)
+        outRegex := regexp.MustCompile(`(.*)\n.*` + configuration.RemoteUsername + `.*\$`)
+        commandResult = outRegex.ReplaceAllString(rawCommandResult, "${1}")
+    } else {
+        var b bytes.Buffer
+        sshSession.Stdout = &b
+        sshSession.Run(saltCommand)
+        outRegex := regexp.MustCompile(`^.*: (.*)`)
+        commandResult = outRegex.ReplaceAllString(b.String(), "${1}")
+    }
 
     return commandResult
 
+}
+
+func readBuffForString(sshOut io.Reader, checkPrompt bool) string {
+
+    buf := make([]byte, 1000)
+    n, err := sshOut.Read(buf)
+    waitingString := ""
+
+    if err == nil {
+        waitingString = string(buf[:n])
+    }
+    for err == nil {
+        n, err = sshOut.Read(buf)
+        waitingString += string(buf[:n])
+        if err != nil {
+            fmt.Println(err)
+        }
+
+        var sudoPromptRegex = regexp.MustCompile(`.*password for.*`)
+        var shellPromptRegex = regexp.MustCompile(configuration.RemoteUsername + `.*\$`)
+
+        // use regexes to determine when to break from receiving output
+        if configuration.UseSudo && configuration.SudoType == "password" {
+            if sudoPromptRegex.MatchString(waitingString) {
+                break
+            } else if checkPrompt && shellPromptRegex.MatchString(waitingString) {
+                break
+            }
+        }
+
+    }
+
+    return waitingString
+}
+
+func writeSession(cmd string, sshIn io.WriteCloser) {
+    _, err := sshIn.Write([]byte(cmd + "\r"))
+    handleError(err)
+}
+
+func handleError(err error) {
+    if err != nil {
+        panic(err)
+    }
 }
 
 func main() {
