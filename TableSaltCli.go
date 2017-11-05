@@ -87,7 +87,7 @@ func setupJump() {
     err := error(nil)
 
     // Set SSH configuration
-    bsshConfig := generateSshConfig("bastion")
+    bsshConfig := generateSshConfig("jump")
 
     bsshClientConnection, err = ssh.Dial("tcp", configuration.JumpServer, bsshConfig)
     if err != nil {
@@ -106,7 +106,7 @@ func generateSshConfig(configType string) (*ssh.ClientConfig) {
 
     sshAuthMethod := []ssh.AuthMethod{SSHAgent()}
 
-    if configType == "bastion" {
+    if configType == "jump" {
         sshConfigUsername = configuration.JumpUsername
         sshConfigPassword = configuration.JumpPassword
         sshConfigPrivateKey = configuration.JumpPrivateKey
