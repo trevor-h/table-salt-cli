@@ -10,9 +10,11 @@ import (
     "runtime"
     "bufio"
     "io"
+    "io/ioutil"
     "regexp"
     "path/filepath"
     "encoding/json"
+    "encoding/base64"
     "golang.org/x/crypto/ssh"
     "golang.org/x/crypto/ssh/agent"
 )
@@ -52,7 +54,6 @@ func HostKeyCheck(remoteHost string) (ssh.HostKeyCallback) {
     file, err := os.Open(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
     defer file.Close()
 
@@ -75,7 +76,6 @@ func HostKeyCheck(remoteHost string) (ssh.HostKeyCallback) {
 
     if hostKey == nil {
         log.Fatalf("No hostkey for %s. You can disable checks in the config by setting HostKeyCheck to false.", host)
-        os.Exit(1)
     }
 
     return ssh.FixedHostKey(hostKey)
@@ -92,7 +92,6 @@ func setupJump() {
     bsshClientConnection, err = ssh.Dial("tcp", configuration.JumpServer, bsshConfig)
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 
 }
@@ -121,8 +120,7 @@ func generateSshConfig(configType string) (*ssh.ClientConfig) {
     if configuration.Auth == "key" && len(sshConfigPrivateKey) > 0 {
         remoteKey, err := ssh.ParsePrivateKey([]byte(sshConfigPrivateKey))
         if err != nil {
-            fmt.Println("Could not parse private key file. Check the path and ensure it is not encrypted.")
-            os.Exit(1)
+            log.Fatal("Could not parse private key file. Check the path and ensure it is not encrypted.")
         }
         sshAuthMethod[0] = ssh.PublicKeys(remoteKey)
     } else if configuration.Auth == "agent" && runtime.GOOS != "windows" {
@@ -130,8 +128,7 @@ func generateSshConfig(configType string) (*ssh.ClientConfig) {
     } else if configuration.Auth == "password" && len(sshConfigPassword) > 0 {
         sshAuthMethod[0] = ssh.Password(sshConfigPassword)
     } else {
-        fmt.Println("No supported authentication modes available/supported. Double check your configuration.")
-        os.Exit(1)
+        log.Fatal("No supported authentication modes available/supported. Double check your configuration.")
     }
 
     if configuration.HostKeyCheck {
@@ -160,6 +157,22 @@ func generateSaltCommand() (string) {
 
     // Advanced feature handling
     for i := 0; i < len(args); i++ {
+
+        // Check if running virtual wrapped module and flag
+        if args[i] == "tablesalt.cp" {
+            args[i] = "hashutil.base64_decodefile"
+            sourceIndex := i + 1
+            destIndex := i + 2
+            if _, err := os.Stat(args[sourceIndex]); !os.IsNotExist(err) {
+                fileData, err := ioutil.ReadFile(args[sourceIndex])
+                if err != nil {
+                    log.Fatal(err)
+                }
+                fileDataEncoded := base64.StdEncoding.EncodeToString(fileData)
+                args[sourceIndex] = "instr=\"" + fileDataEncoded + "\""
+                args[destIndex] = "outfile=\"" + args[destIndex] + "\""
+            }
+        }
 
         // Check if alt exec + build command
         if args[i] == "--tsr" {
@@ -201,20 +214,18 @@ func useJump() (string) {
     jumpConnection, err := bsshClientConnection.Dial("tcp", configuration.RemoteEndpoint)
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 
     ncc, chans, reqs, err := ssh.NewClientConn(jumpConnection, configuration.RemoteEndpoint, sshConfig)
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 
     sshClientConnection := ssh.NewClient(ncc, chans, reqs)
 
     session, err := sshClientConnection.NewSession()
     if err != nil {
-        fmt.Println(err.Error())
+        log.Fatal(err)
     }
     defer session.Close()
     commandResult = executePtySession(session)
@@ -230,12 +241,11 @@ func goDirect() (string) {
     sshClientConnection, err := ssh.Dial("tcp", configuration.RemoteEndpoint, sshConfig)
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 
     session, err := sshClientConnection.NewSession()
     if err != nil {
-        fmt.Println(err.Error())
+        log.Fatal(err)
     }
     defer session.Close()
     commandResult = executePtySession(session)
@@ -272,6 +282,7 @@ func executePtySession(sshSession *ssh.Session) (string) {
 
         // send sudo salt command
         writeSession(saltCommand, sshIn)
+
         // wait for password prompt. will break loop to return
         readBuffForString(sshOut, false)
         // send password when prompted. will break loop on command prompt
@@ -307,7 +318,7 @@ func readBuffForString(sshOut io.Reader, checkPrompt bool) string {
         n, err = sshOut.Read(buf)
         waitingString += string(buf[:n])
         if err != nil {
-            fmt.Println(err)
+            log.Fatal(err)
         }
 
         var sudoPromptRegex = regexp.MustCompile(`.*password for.*`)
@@ -329,7 +340,9 @@ func readBuffForString(sshOut io.Reader, checkPrompt bool) string {
 
 func writeSession(cmd string, sshIn io.WriteCloser) {
     _, err := sshIn.Write([]byte(cmd + "\r"))
-    handleError(err)
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 
 func stripEmptyLines(inString string) (string) {
@@ -355,7 +368,7 @@ func main() {
     configuration = Configuration{}
     err := decoder.Decode(&configuration)
     if err != nil {
-      fmt.Println("Error: Invalid or missing configuration. ", err)
+      log.Fatal("Error: Invalid or missing configuration.")
     }
 
     // Parse salt command args
