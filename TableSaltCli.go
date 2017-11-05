@@ -153,13 +153,25 @@ func generateSshConfig(configType string) (*ssh.ClientConfig) {
 
 func generateSaltCommand() (string) {
 
+    var passedArgs string
+    execCommand := "salt"
+
     args := os.Args[1:]
 
     for i := 0; i < len(args); i++ {
-        args[i] = "\""+args[i]+"\""
+        if args[i] == "--tsr" {
+            execCommand = "salt-run"
+        } else if args[i] == "--tsk" {
+            execCommand = "salt-key"
+        } else if args[i] == "--tse" {
+            execCommand = ""
+        } else {
+            args[i] = "\""+args[i]+"\""
+            passedArgs = passedArgs + " " + args[i]
+        }
     }
 
-    saltCommand := "salt " + strings.Join(args, " ")
+    saltCommand := execCommand + " " + passedArgs
 
     // Handle sudo if necessary
     if configuration.UseSudo {
@@ -176,6 +188,7 @@ func generateSaltCommand() (string) {
     return saltCommand
 
 }
+
 
 func useJump() (string) {
 
