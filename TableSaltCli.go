@@ -118,7 +118,11 @@ func generateSshConfig(configType string) (*ssh.ClientConfig) {
     }
 
     if configuration.Auth == "key" && len(sshConfigPrivateKey) > 0 {
-        remoteKey, err := ssh.ParsePrivateKey([]byte(sshConfigPrivateKey))
+        privateBytes, err := ioutil.ReadFile(sshConfigPrivateKey)
+        if err != nil {
+           log.Fatal("Failed to load private key: ", err)
+        }
+        remoteKey, err := ssh.ParsePrivateKey(privateBytes)
         if err != nil {
             log.Fatal("Could not parse private key file. Check the path and ensure it is not encrypted.")
         }
